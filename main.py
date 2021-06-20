@@ -122,6 +122,15 @@ class Development:
         self.final_state = final_state
         self.action_history = action_history
 
+        # NOTE: This assertion may heavy specially.
+        def simulated_final_state():
+            state = None
+            for _, state in self.replay():
+                pass
+            return state
+
+        assert self.final_state == simulated_final_state()
+
     def __str__(self):
         action_history_str = (
             "[" + ", ".join(str(action) for action in self.action_history) + "]"
