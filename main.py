@@ -131,11 +131,9 @@ class Development:
 
     def to_detailed_str(self):
         lines = []
-        state = State.initial()
-        lines.append(str(state))
-        for action in self.action_history:
-            lines.append(str(action))
-            state = action(state)
+        for action, state in self.replay():
+            if action:
+                lines.append(str(action))
             lines.append(str(state))
         return "\n".join(lines)
 
@@ -144,6 +142,13 @@ class Development:
         action_history = self.action_history.copy()
         action_history.append(action)
         return Development(final_state, action_history)
+
+    def replay(self):
+        state = State.initial()
+        yield None, state
+        for action in self.action_history:
+            state = action(state)
+            yield action, state
 
     def next_developments(self):
         developments = (self.apply(action) for action in available_actions())
