@@ -8,8 +8,8 @@ class Pot:
         assert oil_volume >= 0
         assert oil_volume <= capacity
 
-        self.oil_volume = oil_volume
         self.capacity = capacity
+        self.oil_volume = oil_volume
 
     def __str__(self):
         return "■" * self.oil_volume + "□" * self.space
