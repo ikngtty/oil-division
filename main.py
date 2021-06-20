@@ -8,11 +8,19 @@ class Pot:
         assert oil_volume >= 0
         assert oil_volume <= capacity
 
-        self.capacity = capacity
-        self.oil_volume = oil_volume
+        self._capacity = capacity
+        self._oil_volume = oil_volume
 
     def __str__(self):
         return "■" * self.oil_volume + "□" * self.space
+
+    @property
+    def capacity(self):
+        return self._capacity
+
+    @property
+    def oil_volume(self):
+        return self._oil_volume
 
     @property
     def space(self):
@@ -28,7 +36,7 @@ class Pot:
 
 # TODO: parameterize
 class Rule:
-    INITIAL_POTS = [Pot(3, 0), Pot(5, 0), Pot(10, 10)]
+    INITIAL_POTS = (Pot(3, 0), Pot(5, 0), Pot(10, 10))
     POT_COUNT = len(INITIAL_POTS)
     TOTAL_OIL_VOLUME = sum(pot.oil_volume for pot in INITIAL_POTS)
 
@@ -53,13 +61,17 @@ class State:
             assert pot.capacity == initial_pot.capacity
         assert sum(pot.oil_volume for pot in pots) == Rule.TOTAL_OIL_VOLUME
 
-        self.pots = pots
+        self._pots = pots
 
     def __str__(self):
         return "\n".join(str(pot) for pot in self.pots)
 
     def __eq__(self, other):
         return self.state_index == other.state_index
+
+    @property
+    def pots(self):
+        return self._pots
 
     # HACK: Impossible states, in which total oil volume is changed,
     # are included.
@@ -85,8 +97,8 @@ class OilMoveAction:
         assert dest_pot_index >= 0
         assert dest_pot_index < Rule.POT_COUNT
 
-        self.source_pot_index = source_pot_index
-        self.dest_pot_index = dest_pot_index
+        self._source_pot_index = source_pot_index
+        self._dest_pot_index = dest_pot_index
 
     def __call__(self, state):
         source_pot = state.pots[self.source_pot_index]
@@ -94,13 +106,21 @@ class OilMoveAction:
 
         move_oil_volume = min(source_pot.oil_volume, dest_pot.space)
 
-        oil_moved_pots = state.pots.copy()
+        oil_moved_pots = list(state.pots)
         oil_moved_pots[self.source_pot_index] = source_pot.add_oil(-1 * move_oil_volume)
         oil_moved_pots[self.dest_pot_index] = dest_pot.add_oil(move_oil_volume)
-        return State(oil_moved_pots)
+        return State(tuple(oil_moved_pots))
 
     def __str__(self):
         return f"{self.source_pot_index}->{self.dest_pot_index}"
+
+    @property
+    def source_pot_index(self):
+        return self._source_pot_index
+
+    @property
+    def dest_pot_index(self):
+        return self._dest_pot_index
 
 
 def available_actions():
@@ -116,11 +136,11 @@ def available_actions():
 class Development:
     @classmethod
     def initial(cls):
-        return cls(State.initial(), [])
+        return cls(State.initial(), ())
 
     def __init__(self, final_state, action_history):
-        self.final_state = final_state
-        self.action_history = action_history
+        self._final_state = final_state
+        self._action_history = action_history
 
         # NOTE: This assertion may heavy specially.
         def simulated_final_state():
@@ -138,6 +158,14 @@ class Development:
         final_state_str = str(self.final_state)
         return action_history_str + "\n" + final_state_str
 
+    @property
+    def final_state(self):
+        return self._final_state
+
+    @property
+    def action_history(self):
+        return self._action_history
+
     def to_detailed_str(self):
         lines = []
         for action, state in self.replay():
@@ -148,8 +176,7 @@ class Development:
 
     def apply(self, action):
         final_state = action(self.final_state)
-        action_history = self.action_history.copy()
-        action_history.append(action)
+        action_history = self.action_history + (action,)
         return Development(final_state, action_history)
 
     def replay(self):
