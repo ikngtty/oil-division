@@ -125,7 +125,7 @@ class Development:
         return cls(State.initial(), ())
 
     def __post_init__(self):
-        # NOTE: This assertion may heavy specially.
+        # NOTE: This assertion may be heavy specially.
         def simulated_final_state() -> State:
             state = None
             for _, state in self.replay():
