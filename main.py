@@ -1,27 +1,21 @@
 import logging
+from dataclasses import dataclass
 from itertools import chain
 from typing import Generator, List, Optional, Tuple
 
 
+@dataclass(frozen=True)
 class Pot:
-    def __init__(self, capacity: int, oil_volume: int) -> None:
-        assert capacity >= 0
-        assert oil_volume >= 0
-        assert oil_volume <= capacity
+    capacity: int
+    oil_volume: int
 
-        self._capacity = capacity
-        self._oil_volume = oil_volume
+    def __post_init__(self) -> None:
+        assert self.capacity >= 0
+        assert self.oil_volume >= 0
+        assert self.oil_volume <= self.capacity
 
     def __str__(self) -> str:
         return "■" * self.oil_volume + "□" * self.space
-
-    @property
-    def capacity(self) -> int:
-        return self._capacity
-
-    @property
-    def oil_volume(self) -> int:
-        return self._oil_volume
 
     @property
     def space(self) -> int:
@@ -42,7 +36,10 @@ class Rule:
     TOTAL_OIL_VOLUME = sum(pot.oil_volume for pot in INITIAL_POTS)
 
 
+@dataclass(frozen=True)
 class State:
+    pots: Tuple[Pot, ...]
+
     # HACK: Impossible states, in which total oil volume is changed,
     # are included.
     @classmethod
@@ -56,23 +53,14 @@ class State:
     def initial(cls) -> "State":
         return cls(Rule.INITIAL_POTS)
 
-    def __init__(self, pots: Tuple[Pot, ...]) -> None:
-        assert len(pots) == len(Rule.INITIAL_POTS)
-        for pot, initial_pot in zip(pots, Rule.INITIAL_POTS):
+    def __post_init__(self) -> None:
+        assert len(self.pots) == len(Rule.INITIAL_POTS)
+        for pot, initial_pot in zip(self.pots, Rule.INITIAL_POTS):
             assert pot.capacity == initial_pot.capacity
-        assert sum(pot.oil_volume for pot in pots) == Rule.TOTAL_OIL_VOLUME
-
-        self._pots = pots
+        assert sum(pot.oil_volume for pot in self.pots) == Rule.TOTAL_OIL_VOLUME
 
     def __str__(self) -> str:
         return "\n".join(str(pot) for pot in self.pots)
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, State) and self.state_index == other.state_index
-
-    @property
-    def pots(self) -> Tuple[Pot, ...]:
-        return self._pots
 
     # HACK: Impossible states, in which total oil volume is changed,
     # are included.
@@ -91,15 +79,16 @@ def achieves(state: State) -> bool:
     return state.pots[1].oil_volume == 4
 
 
+@dataclass(frozen=True)
 class OilMoveAction:
-    def __init__(self, source_pot_index: int, dest_pot_index: int) -> None:
-        assert source_pot_index >= 0
-        assert source_pot_index < Rule.POT_COUNT
-        assert dest_pot_index >= 0
-        assert dest_pot_index < Rule.POT_COUNT
+    source_pot_index: int
+    dest_pot_index: int
 
-        self._source_pot_index = source_pot_index
-        self._dest_pot_index = dest_pot_index
+    def __post_init__(self) -> None:
+        assert self.source_pot_index >= 0
+        assert self.source_pot_index < Rule.POT_COUNT
+        assert self.dest_pot_index >= 0
+        assert self.dest_pot_index < Rule.POT_COUNT
 
     def __call__(self, state: State) -> State:
         source_pot = state.pots[self.source_pot_index]
@@ -115,14 +104,6 @@ class OilMoveAction:
     def __str__(self) -> str:
         return f"{self.source_pot_index}->{self.dest_pot_index}"
 
-    @property
-    def source_pot_index(self) -> int:
-        return self._source_pot_index
-
-    @property
-    def dest_pot_index(self) -> int:
-        return self._dest_pot_index
-
 
 def available_actions() -> List[OilMoveAction]:
     actions: List[OilMoveAction] = []
@@ -134,17 +115,16 @@ def available_actions() -> List[OilMoveAction]:
     return actions
 
 
+@dataclass(frozen=True)
 class Development:
+    final_state: State
+    action_history: Tuple[OilMoveAction, ...]
+
     @classmethod
     def initial(cls) -> "Development":
         return cls(State.initial(), ())
 
-    def __init__(
-        self, final_state: State, action_history: Tuple[OilMoveAction, ...]
-    ) -> None:
-        self._final_state = final_state
-        self._action_history = action_history
-
+    def __post_init__(self):
         # NOTE: This assertion may heavy specially.
         def simulated_final_state() -> State:
             state = None
@@ -160,14 +140,6 @@ class Development:
         )
         final_state_str = str(self.final_state)
         return action_history_str + "\n" + final_state_str
-
-    @property
-    def final_state(self) -> State:
-        return self._final_state
-
-    @property
-    def action_history(self) -> Tuple[OilMoveAction, ...]:
-        return self._action_history
 
     def to_detailed_str(self) -> str:
         lines = []
