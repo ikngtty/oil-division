@@ -30,9 +30,12 @@ class Pot:
 class Rule:
     INITIAL_POTS = [Pot(3, 0), Pot(5, 0), Pot(10, 10)]
     POT_COUNT = len(INITIAL_POTS)
+    TOTAL_OIL_VOLUME = sum(pot.oil_volume for pot in INITIAL_POTS)
 
 
 class State:
+    # HACK: Impossible states, in which total oil volume is changed,
+    # are included.
     @classmethod
     def count(cls):
         count = 1
@@ -48,6 +51,7 @@ class State:
         assert len(pots) == len(Rule.INITIAL_POTS)
         for pot, initial_pot in zip(pots, Rule.INITIAL_POTS):
             assert pot.capacity == initial_pot.capacity
+        assert sum(pot.oil_volume for pot in pots) == Rule.TOTAL_OIL_VOLUME
 
         self.pots = pots
 
@@ -57,6 +61,8 @@ class State:
     def __eq__(self, other):
         return self.state_index == other.state_index
 
+    # HACK: Impossible states, in which total oil volume is changed,
+    # are included.
     @property
     def state_index(self):
         index = 0
