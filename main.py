@@ -67,7 +67,7 @@ class State:
         return "\n".join(str(pot) for pot in self.pots)
 
     def __eq__(self, other):
-        return self.state_index == other.state_index
+        return isinstance(other, State) and self.state_index == other.state_index
 
     @property
     def pots(self):
