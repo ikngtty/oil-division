@@ -1,5 +1,5 @@
-import itertools
 import logging
+from itertools import chain
 from typing import Generator, List, Optional, Tuple
 
 
@@ -208,7 +208,7 @@ def search() -> Optional[Development]:
         source_devs = searched_devs
         searched_devs = []
 
-        for dev in itertools.chain.from_iterable(
+        for dev in chain.from_iterable(
             source_dev.next_developments() for source_dev in source_devs
         ):
             state_index = dev.final_state.state_index
