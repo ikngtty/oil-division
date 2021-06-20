@@ -2,36 +2,57 @@ import itertools
 import logging
 
 
+class Pot:
+    def __init__(self, capacity, oil_volume):
+        assert capacity >= 0
+        assert oil_volume >= 0
+        assert oil_volume <= capacity
+
+        self.oil_volume = oil_volume
+        self.capacity = capacity
+
+    def __str__(self):
+        return "■" * self.oil_volume + "□" * self.space
+
+    @property
+    def space(self):
+        return self.capacity - self.oil_volume
+
+    def add_oil(self, oil_volume_to_add):
+        oil_volume = self.oil_volume + oil_volume_to_add
+        assert oil_volume >= 0
+        assert oil_volume <= self.capacity
+
+        return Pot(self.capacity, oil_volume)
+
+
+# TODO: parameterize
 class Rule:
-    POT_CAPACITIES = [3, 5, 10]  # TODO: parameterize
-    POT_COUNT = len(POT_CAPACITIES)
+    INITIAL_POTS = [Pot(3, 0), Pot(5, 0), Pot(10, 10)]
+    POT_COUNT = len(INITIAL_POTS)
 
 
 class State:
     @classmethod
     def count(cls):
         count = 1
-        for capacity in Rule.POT_CAPACITIES:
-            count *= capacity + 1
+        for pot in Rule.INITIAL_POTS:
+            count *= pot.capacity + 1
         return count
 
-    # TODO: parameterize
     @classmethod
     def initial(cls):
-        return cls([0, 0, 10])
+        return cls(Rule.INITIAL_POTS)
 
-    def __init__(self, oil_volumes):
-        assert len(oil_volumes) == Rule.POT_COUNT
-        for volume, capacity in zip(oil_volumes, Rule.POT_CAPACITIES):
-            assert volume <= capacity
+    def __init__(self, pots):
+        assert len(pots) == len(Rule.INITIAL_POTS)
+        for pot, initial_pot in zip(pots, Rule.INITIAL_POTS):
+            assert pot.capacity == initial_pot.capacity
 
-        self.oil_volumes = oil_volumes
+        self.pots = pots
 
     def __str__(self):
-        return "\n".join(
-            "■" * volume + "□" * (capacity - volume)
-            for volume, capacity in zip(self.oil_volumes, Rule.POT_CAPACITIES)
-        )
+        return "\n".join(str(pot) for pot in self.pots)
 
     def __eq__(self, other):
         return self.state_index == other.state_index
@@ -40,21 +61,15 @@ class State:
     def state_index(self):
         index = 0
         base = 1
-        for volume, capacity in zip(self.oil_volumes, Rule.POT_CAPACITIES):
-            index += base * volume
-            base *= capacity
+        for pot in self.pots:
+            index += base * pot.oil_volume
+            base *= pot.capacity
         return index
-
-    def space_of_pot(self, index):
-        assert index >= 0
-        assert index < Rule.POT_COUNT
-
-        return Rule.POT_CAPACITIES[index] - self.oil_volumes[index]
 
 
 # TODO: parameterize
 def achieves(state):
-    return state.oil_volumes[1] == 4
+    return state.pots[1].oil_volume == 4
 
 
 class OilMoveAction:
@@ -68,14 +83,15 @@ class OilMoveAction:
         self.dest_pot_index = dest_pot_index
 
     def __call__(self, state):
-        oil_volume = state.oil_volumes[self.source_pot_index]
-        space = state.space_of_pot(self.dest_pot_index)
-        move_oil_volume = min(oil_volume, space)
+        source_pot = state.pots[self.source_pot_index]
+        dest_pot = state.pots[self.dest_pot_index]
 
-        moved_oil_volumes = state.oil_volumes.copy()
-        moved_oil_volumes[self.source_pot_index] -= move_oil_volume
-        moved_oil_volumes[self.dest_pot_index] += move_oil_volume
-        return State(moved_oil_volumes)
+        move_oil_volume = min(source_pot.oil_volume, dest_pot.space)
+
+        oil_moved_pots = state.pots.copy()
+        oil_moved_pots[self.source_pot_index] = source_pot.add_oil(-1 * move_oil_volume)
+        oil_moved_pots[self.dest_pot_index] = dest_pot.add_oil(move_oil_volume)
+        return State(oil_moved_pots)
 
     def __str__(self):
         return f"{self.source_pot_index}->{self.dest_pot_index}"
