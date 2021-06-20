@@ -1,9 +1,10 @@
 import itertools
 import logging
+from typing import Generator, List, Optional, Tuple
 
 
 class Pot:
-    def __init__(self, capacity, oil_volume):
+    def __init__(self, capacity: int, oil_volume: int) -> None:
         assert capacity >= 0
         assert oil_volume >= 0
         assert oil_volume <= capacity
@@ -11,22 +12,22 @@ class Pot:
         self._capacity = capacity
         self._oil_volume = oil_volume
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "■" * self.oil_volume + "□" * self.space
 
     @property
-    def capacity(self):
+    def capacity(self) -> int:
         return self._capacity
 
     @property
-    def oil_volume(self):
+    def oil_volume(self) -> int:
         return self._oil_volume
 
     @property
-    def space(self):
+    def space(self) -> int:
         return self.capacity - self.oil_volume
 
-    def add_oil(self, oil_volume_to_add):
+    def add_oil(self, oil_volume_to_add: int) -> "Pot":
         oil_volume = self.oil_volume + oil_volume_to_add
         assert oil_volume >= 0
         assert oil_volume <= self.capacity
@@ -45,17 +46,17 @@ class State:
     # HACK: Impossible states, in which total oil volume is changed,
     # are included.
     @classmethod
-    def count(cls):
+    def count(cls) -> int:
         count = 1
         for pot in Rule.INITIAL_POTS:
             count *= pot.capacity + 1
         return count
 
     @classmethod
-    def initial(cls):
+    def initial(cls) -> "State":
         return cls(Rule.INITIAL_POTS)
 
-    def __init__(self, pots):
+    def __init__(self, pots: Tuple[Pot, ...]) -> None:
         assert len(pots) == len(Rule.INITIAL_POTS)
         for pot, initial_pot in zip(pots, Rule.INITIAL_POTS):
             assert pot.capacity == initial_pot.capacity
@@ -63,20 +64,20 @@ class State:
 
         self._pots = pots
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "\n".join(str(pot) for pot in self.pots)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, State) and self.state_index == other.state_index
 
     @property
-    def pots(self):
+    def pots(self) -> Tuple[Pot, ...]:
         return self._pots
 
     # HACK: Impossible states, in which total oil volume is changed,
     # are included.
     @property
-    def state_index(self):
+    def state_index(self) -> int:
         index = 0
         base = 1
         for pot in self.pots:
@@ -86,12 +87,12 @@ class State:
 
 
 # TODO: parameterize
-def achieves(state):
+def achieves(state: State) -> bool:
     return state.pots[1].oil_volume == 4
 
 
 class OilMoveAction:
-    def __init__(self, source_pot_index, dest_pot_index):
+    def __init__(self, source_pot_index: int, dest_pot_index: int) -> None:
         assert source_pot_index >= 0
         assert source_pot_index < Rule.POT_COUNT
         assert dest_pot_index >= 0
@@ -100,7 +101,7 @@ class OilMoveAction:
         self._source_pot_index = source_pot_index
         self._dest_pot_index = dest_pot_index
 
-    def __call__(self, state):
+    def __call__(self, state: State) -> State:
         source_pot = state.pots[self.source_pot_index]
         dest_pot = state.pots[self.dest_pot_index]
 
@@ -111,20 +112,20 @@ class OilMoveAction:
         oil_moved_pots[self.dest_pot_index] = dest_pot.add_oil(move_oil_volume)
         return State(tuple(oil_moved_pots))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.source_pot_index}->{self.dest_pot_index}"
 
     @property
-    def source_pot_index(self):
+    def source_pot_index(self) -> int:
         return self._source_pot_index
 
     @property
-    def dest_pot_index(self):
+    def dest_pot_index(self) -> int:
         return self._dest_pot_index
 
 
-def available_actions():
-    actions = []
+def available_actions() -> List[OilMoveAction]:
+    actions: List[OilMoveAction] = []
     for source_pot_index in range(Rule.POT_COUNT):
         for dest_pot_index in range(Rule.POT_COUNT):
             if dest_pot_index == source_pot_index:
@@ -135,15 +136,17 @@ def available_actions():
 
 class Development:
     @classmethod
-    def initial(cls):
+    def initial(cls) -> "Development":
         return cls(State.initial(), ())
 
-    def __init__(self, final_state, action_history):
+    def __init__(
+        self, final_state: State, action_history: Tuple[OilMoveAction, ...]
+    ) -> None:
         self._final_state = final_state
         self._action_history = action_history
 
         # NOTE: This assertion may heavy specially.
-        def simulated_final_state():
+        def simulated_final_state() -> State:
             state = None
             for _, state in self.replay():
                 pass
@@ -151,7 +154,7 @@ class Development:
 
         assert self.final_state == simulated_final_state()
 
-    def __str__(self):
+    def __str__(self) -> str:
         action_history_str = (
             "[" + ", ".join(str(action) for action in self.action_history) + "]"
         )
@@ -159,14 +162,14 @@ class Development:
         return action_history_str + "\n" + final_state_str
 
     @property
-    def final_state(self):
+    def final_state(self) -> State:
         return self._final_state
 
     @property
-    def action_history(self):
+    def action_history(self) -> Tuple[OilMoveAction, ...]:
         return self._action_history
 
-    def to_detailed_str(self):
+    def to_detailed_str(self) -> str:
         lines = []
         for action, state in self.replay():
             if action:
@@ -174,25 +177,25 @@ class Development:
             lines.append(str(state))
         return "\n".join(lines)
 
-    def apply(self, action):
+    def apply(self, action: OilMoveAction) -> "Development":
         final_state = action(self.final_state)
         action_history = self.action_history + (action,)
         return Development(final_state, action_history)
 
-    def replay(self):
+    def replay(self) -> Generator[Tuple[Optional[OilMoveAction], State], None, None]:
         state = State.initial()
         yield None, state
         for action in self.action_history:
             state = action(state)
             yield action, state
 
-    def next_developments(self):
+    def next_developments(self) -> List["Development"]:
         developments = (self.apply(action) for action in available_actions())
         return [d for d in developments if d.final_state != self.final_state]
 
 
-def search():
-    devs = [None] * State.count()
+def search() -> Optional[Development]:
+    devs: List[Optional[Development]] = [None] * State.count()
 
     initial_dev = Development.initial()
     logging.debug(initial_dev)
