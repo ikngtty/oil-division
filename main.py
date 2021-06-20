@@ -53,7 +53,7 @@ class State:
 
 
 # TODO: parameterize
-def state_is_achieved(state):
+def achieves(state):
     return state.oil_volumes[1] == 4
 
 
@@ -133,7 +133,7 @@ def search():
 
     initial_dev = Development.initial()
     logging.debug(initial_dev)
-    if state_is_achieved(initial_dev.final_state):
+    if achieves(initial_dev.final_state):
         return initial_dev
     devs[initial_dev.final_state.state_index] = initial_dev
 
@@ -150,7 +150,7 @@ def search():
                 continue
 
             logging.debug(dev)
-            if state_is_achieved(dev.final_state):
+            if achieves(dev.final_state):
                 return dev
 
             devs[state_index] = dev
