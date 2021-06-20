@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from itertools import chain
-from typing import Generator, List, Optional, Tuple
+from typing import Callable, Generator, List, Optional, Tuple
 
 
 @dataclass(frozen=True)
@@ -79,6 +79,9 @@ def achieves(state: State) -> bool:
     return state.pots[1].oil_volume == 4
 
 
+Action = Callable[[State], State]
+
+
 @dataclass(frozen=True)
 class OilMoveAction:
     source_pot_index: int
@@ -105,8 +108,8 @@ class OilMoveAction:
         return f"{self.source_pot_index}->{self.dest_pot_index}"
 
 
-def available_actions() -> List[OilMoveAction]:
-    actions: List[OilMoveAction] = []
+def available_actions() -> List[Action]:
+    actions: List[Action] = []
     for source_pot_index in range(Rule.POT_COUNT):
         for dest_pot_index in range(Rule.POT_COUNT):
             if dest_pot_index == source_pot_index:
@@ -118,7 +121,7 @@ def available_actions() -> List[OilMoveAction]:
 @dataclass(frozen=True)
 class Development:
     final_state: State
-    action_history: Tuple[OilMoveAction, ...]
+    action_history: Tuple[Action, ...]
 
     @classmethod
     def initial(cls) -> "Development":
@@ -149,12 +152,12 @@ class Development:
             lines.append(str(state))
         return "\n".join(lines)
 
-    def apply(self, action: OilMoveAction) -> "Development":
+    def apply(self, action: Action) -> "Development":
         final_state = action(self.final_state)
         action_history = self.action_history + (action,)
         return Development(final_state, action_history)
 
-    def replay(self) -> Generator[Tuple[Optional[OilMoveAction], State], None, None]:
+    def replay(self) -> Generator[Tuple[Optional[Action], State], None, None]:
         state = State.initial()
         yield None, state
         for action in self.action_history:
